@@ -1,0 +1,82 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: go-app
+  namespace: default
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: go-app
+  template:
+    metadata:
+      labels:
+        app: go-app
+    spec:
+      terminationGracePeriodSeconds: 0
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: node
+                operator: In
+                values:
+                - worker1
+      containers:
+      - name: go-app
+        image: dsi/gok8-app:1.7
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: http
+          containerPort: 8080
+        # - name: metrics
+        #   containerPort: 8081
+        env:
+        - name: WEBSERVER_PORT
+          value: "8080"
+        - name: DB_DRIVER
+          value: "postgres"
+        - name: DB_HOST
+          value: "192.168.1.5"
+        - name: DB_PORT
+          value: "5432"
+        - name: DB_NAME
+          value: "mytestdb"
+        - name: DB_USERNAME
+          value: "dbuser"
+        - name: DB_PASSWORD
+          value: "password1234"
+        - name: DB_SCHEMA
+          value: "public"
+
+        - name: GOMAXPROCS
+          valueFrom:
+            resourceFieldRef:
+              resource: limits.cpu
+        - name: GOMEMLIMIT
+          valueFrom:
+            resourceFieldRef:
+              resource: requests.memory
+        resources:
+          requests:
+            memory: 480Mi
+            cpu: 1000m
+          limits:
+            memory: 480Mi
+            cpu: 1000m
+        readinessProbe:
+          httpGet:
+            path: /ping
+            port: http
+        livenessProbe:
+          httpGet:
+            path: /ping
+            port: http              
+      tolerations:
+      - effect: NoSchedule
+        operator: Exists
+    

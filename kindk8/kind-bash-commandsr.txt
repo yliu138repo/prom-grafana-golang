@@ -1,0 +1,61 @@
+# prerequisite
+You must have following installed on your machine:
+Docker => installation details: https://docs.docker.com/engine/install/
+Kind  => installation details: https://kind.sigs.k8s.io/docs/user/quick-start/#installation
+Helm  => installation details: https://helm.sh/docs/intro/install/
+Go  => installation details: https://go.dev/doc/install
+
+# 1 - create 2 node cluster - bash command
+kind create cluster --config kind-config.yaml
+
+# 2 cluster info
+kubectl cluster-info --context kind-kind
+
+# 3 install grafana and prometheus with node metrics exporter
+helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+helm repo add stable https://charts.helm.sh/stable
+helm repo update
+kubectl create namespace monitoring
+helm install kind-prometheus prometheus-community/kube-prometheus-stack --namespace monitoring --set prometheus.service.nodePort=30000 --set prometheus.service.type=NodePort --set grafana.service.nodePort=31000 --set grafana.service.type=NodePort --set alertmanager.service.nodePort=32000 --set alertmanager.service.type=NodePort --set prometheus-node-exporter.service.nodePort=32001 --set prometheus-node-exporter.service.type=NodePort
+kubectl get svc -n monitoring
+kubectl get namespace
+
+# 4 - label nodes for easy association
+kubectl label nodes kind-worker node=worker1 
+kubectl label nodes kind-worker2 node=worker2
+kubectl get nodes --show-labels
+
+#5 - build your app's docker image
+docker build -t dsi/gok8-app:latest .
+# import the dokcer image from your local reg if you dont want to push it to public reg
+kind load docker-image dsi/gok8-app:latest --name kind
+
+#6 - run deployment.yaml file to create pod for your app
+kubectl apply -f deployment.yaml
+# verify the pod creation
+kubectl get pods
+# some debugging commands
+kubectl describe pod <pod-name>
+kubectl logs <pod-name>
+kubectl exec -it <pod-name> -n default -- /bin/sh
+kubectl debug node/<node-name> -it --image=busybox --namespace=kube-system
+
+#7 - deploy service 
+kubectl apply -f service.yaml
+kubectl get pods
+
+#8 - forward service to your localhost
+kubectl port-forward svc/go-app 8080:8080  &
+
+#9 - forward grafana and prometheus to your localhost
+kubectl port-forward svc/kind-prometheus-kube-prome-prometheus -n monitoring 9090:9090 --address=0.0.0.0 &
+kubectl port-forward svc/kind-prometheus-grafana -n monitoring 31000:80 --address=0.0.0.0 &
+# default grafana credentials > admin : prom-operator
+
+#10 - add your pod/app's metrics to prometheus
+kubectl apply -f go-app-podmonitor.yaml
+# go to your premetheus and verify your app is added under its targets
+
+#11 import grafana/k8-go-app-monitoring-dashboard.json to your grafana dasboard, by replacing existing pod name with your pod name
+#12 run k6 test k6 run k6/api_test.js
+

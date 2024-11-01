@@ -1,0 +1,55 @@
+version: '3.8'
+
+services:
+  go-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: dsi/gok8-app:latest  
+    container_name: gok8-app
+    ports:
+      - "8888:8888"
+    networks:
+      - monitoring
+  psql:
+    image: postgres:latest
+    container_name: gomicro-postgres
+    environment:
+      POSTGRES_DB: mytestdb
+      POSTGRES_USER: dbuser
+      POSTGRES_PASSWORD: password1234
+    ports:
+      - "5432:5432"
+    volumes:
+      - psql_volume:/var/lib/postgresql/data
+
+volumes:
+  psql_volume:
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+    networks:
+      - monitoring
+    depends_on:
+      - go-app
+
+  grafana:
+    image: grafana/grafana-oss:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    networks:
+      - monitoring
+    depends_on:
+      - prometheus
+
+networks:
+  monitoring:
+    driver: bridge
