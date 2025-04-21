@@ -28,7 +28,7 @@ spec:
                 - worker1
       containers:
       - name: go-app
-        image: dsi/gok8-app:1.7
+        image: dsi/gok8-app:latest
         imagePullPolicy: IfNotPresent
         ports:
         - name: http

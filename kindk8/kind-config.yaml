@@ -13,5 +13,5 @@ nodes:
       protocol: TCP
   - role: worker
     extraMounts:
-      - hostPath: /some/path/in/host
-        containerPath: /some/path/in/container
+      - hostPath: /Users/yangliu/sre/GoPrometheusGrafanaK8K6
+        containerPath: /prom-grafana
